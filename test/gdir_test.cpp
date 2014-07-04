@@ -85,8 +85,7 @@ static void test_file_structure(eff::directory &dir) {
       read_files.insert(fname);
     }
     assert_equals("Not all expected files were read;", all_files.size(), read_files.size());
-    // TODO: This is inconsistent between APIs. Works for zip, fails for directory.
-    // assert_false("Leaving this newly-allocated directory doesn't make sense;", ndir.leave());
+    assert_true("Leaving the freshly-entered directory must return success;", ndir.leave());
   }
 }
 

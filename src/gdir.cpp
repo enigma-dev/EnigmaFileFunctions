@@ -100,8 +100,9 @@ namespace eff {
         size_t refs;
         
         inline void unref_parent() {
-          if (parent && !--parent->refs)
-            delete parent;
+          if (parent)
+            unref(parent);
+          parent = NULL;
         }
         
         ~whole_directory() {
@@ -114,9 +115,9 @@ namespace eff {
         filelist files;
         filelist dirs;
         
-        whole_directory(const whole_directory& d): parent(d.parent), refs(1), path(d.path), files(d.files), dirs(d.dirs) {
+        whole_directory(const whole_directory& d): parent(d.parent), refs(0), path(d.path), files(d.files), dirs(d.dirs) {
           if (d.parent)
-            ++ d.parent->refs;
+            ref(d.parent);
         }
         
         whole_directory& operator=(const whole_directory& d) {
@@ -128,34 +129,60 @@ namespace eff {
         
         inline void set_parent(whole_directory *new_parent) {
           unref_parent();
+          ref(new_parent);
           parent = new_parent;
         }
         inline whole_directory *get_parent() const {
           return parent;
         }
         
-        static void unref(whole_directory* ref) {
-          if (!--ref->refs)
-            delete ref;
+        static void ref(whole_directory* refr) {
+          ++refr->refs;
+        }
+        static void unref(whole_directory* refr) {
+          if (!--refr->refs)
+            delete refr;
         }
         
         
-#     ifdef EFF_WINDOWS
+#       ifdef EFF_WINDOWS
 #         define PATH_CHAR "\\"
           
-          static inline bool is_directory(HANDLE file) {
+          static inline bool is_directory(WIN32_FIND_DATA &ffound) {
             // TODO: write
+            // return ffound.﻿﻿dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY;
             return false;
           }
           
-          static inline whole_directory* cache(string dirname) {
+          static inline whole_directory* cache(whole_directory* parent, string dirname) {
             // TODO: write
+            // WIN32_FIND_DATA ffound;
+            // HANDLE dir = FindFirstFile(dirname + "\\*", &ffound)
+            // if (dir == INVALID_HANDLE_VALUE) {
+            //   DWORD dwAttrib = GetFileAttributes(szPath);
+            //   return (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY))?
+            //       new whole_directory(parent, dirname, INVALID_HANDLE_VALUE, ffound);
+            //   return NULL;
+            // }
+            // return new whole_directory(parent, dirname, dir, ffound);
             return NULL;
           }
           
         private:
-          whole_directory() {
-            // TODO: write
+          whole_directory(whole_directory *prnt, string dirname, HANDLE dir, WIN32_FIND_DATA &ffound): parent(prnt), refs(0), path(dirname), files(), dirs() {
+            if (parent)
+              ref(parent);
+            // TODO: Iterate all files and directories, caching them.
+            // if (dir == INVALID_HANDLE_VALUE)
+            //   return;
+            // do {
+            //   if (is_directory(rd)) {
+            //     string name = ffound.cFileName;
+            //     if (name != "." and name != "..")
+            //       dirs.push_back(name);
+            //   }
+            //   else files.push_back(ffound.cFileName);
+            // } while (FindNextFile(dir, &ffound));
           }
 #       else
 #         define PATH_CHAR "/"
@@ -179,9 +206,9 @@ namespace eff {
           }
           
         private:
-          whole_directory(whole_directory *prnt, string dirname, DIR* dir): parent(prnt), refs(1), path(dirname), files(), dirs() {
+          whole_directory(whole_directory *prnt, string dirname, DIR* dir): parent(prnt), refs(0), path(dirname), files(), dirs() {
             if (parent)
-              parent->refs++;
+              ref(parent);
             for (::dirent* rd; (rd = readdir(dir)); ) {
               if (is_directory(rd)) {
                 string name = rd->d_name;
@@ -224,13 +251,17 @@ namespace eff {
       virtual size_t directory_count() const { return current_root->dirs.size(); }
       
       virtual bool enter(string dname) {
-        whole_directory* newroot = whole_directory::cache(current_root, current_root->path + PATH_CHAR + dname);
-        if (!newroot) return false;
-        current_root = newroot;
+        whole_directory* new_root = whole_directory::cache(current_root, current_root->path + PATH_CHAR + dname);
+        if (!new_root)
+          return false;
+        whole_directory::ref(new_root);
+        whole_directory::unref(current_root);
+        current_root = new_root;
         return true;
       }
       virtual directory_kernel *enter_new(string dname) const {
-        whole_directory* root = whole_directory::cache(current_root, current_root->path + PATH_CHAR + dname);
+        const string fullpath = current_root->path + PATH_CHAR + dname;
+        whole_directory* root = whole_directory::cache(current_root, fullpath);
         return root? new kernel_filesystem(root) : NULL;
       }
       virtual bool leave() {
@@ -238,10 +269,10 @@ namespace eff {
           return false;
         whole_directory *old_root = current_root;
         current_root = current_root->get_parent();
+        whole_directory::ref(current_root);
         whole_directory::unref(old_root);
         return true;
       }
-      ;
       
       static directory_kernel *enter_directory(string dname) {
         whole_directory* root = whole_directory::cache(NULL, dname);
@@ -249,7 +280,9 @@ namespace eff {
       }
       
       ~kernel_filesystem() { whole_directory::unref(current_root); }
-      kernel_filesystem(whole_directory* dir): current_root(dir), curfile(), curdir() {}
+      kernel_filesystem(whole_directory* dir): current_root(dir), curfile(), curdir() {
+        whole_directory::ref(dir);
+      }
       
       private:
         kernel_filesystem(const kernel_filesystem&);
