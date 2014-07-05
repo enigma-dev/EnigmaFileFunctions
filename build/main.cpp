@@ -35,7 +35,7 @@ static inline void test_utf8_string() {
     cout << "ans[37]: " << mystr[37] << endl;
     
     for (size_t i = 0; i < mystr.length(); ++i)
-      cout << "mystr[" << i << "] = " << mystr[i] << " (" << (char)mystr[i] << "; byte " << mystr.byte_of(i) << ")" << endl;
+      cout << "mystr[" << i << "] = " << mystr[i] << " (", wcout << (wchar_t)mystr[i], cout << "; byte " << mystr.byte_of(i) << ")" << endl;
     
     mystr += " cool beans, mister";
     cout << mystr.c_str() << endl;

@@ -28,7 +28,7 @@
 				</Linker>
 			</Target>
 			<Target title="Unit Testing">
-				<Option output="bin/test/EGMRead" prefix_auto="1" extension_auto="1" />
+				<Option output="bin/Test/EGMRead" prefix_auto="1" extension_auto="1" />
 				<Option working_dir="./test" />
 				<Option object_output="obj/Test/" />
 				<Option type="1" />
@@ -63,6 +63,10 @@
 		<Linker>
 			<Add library="zip" />
 		</Linker>
+		<Unit filename="build/main.cpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
 		<Unit filename="include/gdir.hpp">
 			<Option target="Debug" />
 			<Option target="Release" />
@@ -71,10 +75,6 @@
 		<Unit filename="src/gdir.cpp" />
 		<Unit filename="test/gdir_test.cpp">
 			<Option target="Unit Testing" />
-		</Unit>
-		<Unit filename="test/main.cpp">
-			<Option target="Debug" />
-			<Option target="Release" />
 		</Unit>
 		<Unit filename="test/test_runner.cpp">
 			<Option target="Unit Testing" />

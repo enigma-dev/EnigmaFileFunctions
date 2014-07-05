@@ -238,7 +238,7 @@ public:
   operator std::string() { return data; }
 };
 
-static std::ostream &operator<<(std::ostream &os, const utf8_string &s) { 
+static inline std::ostream &operator<<(std::ostream &os, const utf8_string &s) { 
     return os << s.str();
 }
 
